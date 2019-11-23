@@ -31,6 +31,7 @@ from telegram import (Bot, Update, ChatAction, TelegramError, User, InlineKeyboa
                       ShippingOption, LabeledPrice, ChatPermissions, Poll)
 from telegram.error import BadRequest, InvalidToken, NetworkError, RetryAfter
 from telegram.utils.helpers import from_timestamp
+from telegram.utils.request import urllib3
 
 BASE_TIME = time.time()
 HIGHSCORE_DELTA = 1450000000
@@ -678,9 +679,6 @@ class TestBot(object):
     # test_sticker module.
 
     def test_timeout_propagation_explicit(self, monkeypatch, bot, chat_id):
-
-        from telegram.vendor.ptb_urllib3.urllib3.util.timeout import Timeout
-
         class OkException(Exception):
             pass
 
@@ -688,7 +686,7 @@ class TestBot(object):
 
         def request_wrapper(*args, **kwargs):
             obj = kwargs.get('timeout')
-            if isinstance(obj, Timeout) and obj._read == TIMEOUT:
+            if isinstance(obj, urllib3.Timeout) and obj._read == TIMEOUT:
                 raise OkException
 
             return b'{"ok": true, "result": []}'
@@ -704,15 +702,12 @@ class TestBot(object):
             bot.get_chat_administrators(chat_id, timeout=TIMEOUT)
 
     def test_timeout_propagation_implicit(self, monkeypatch, bot, chat_id):
-
-        from telegram.vendor.ptb_urllib3.urllib3.util.timeout import Timeout
-
         class OkException(Exception):
             pass
 
         def request_wrapper(*args, **kwargs):
             obj = kwargs.get('timeout')
-            if isinstance(obj, Timeout) and obj._read == 20:
+            if isinstance(obj, urllib3.Timeout) and obj._read == 20:
                 raise OkException
 
             return b'{"ok": true, "result": []}'

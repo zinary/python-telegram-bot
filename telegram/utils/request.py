@@ -40,7 +40,7 @@ except ImportError:  # pragma: no cover
 
     __base_urllib3 = 'urllib3'
     warnings.warn(
-        "Operating with non vendored urllib3. This mode is allowed but not officially supported")
+        "Operating with non vendored urllib3. This mode is allowed but not officially supported.")
 
 from telegram import (InputFile, TelegramError, InputMedia)
 from telegram.error import (Unauthorized, NetworkError, TimedOut, BadRequest, ChatMigrated,

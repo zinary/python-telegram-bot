@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU Lesser Public License
 # along with this program.  If not, see [http://www.gnu.org/licenses/].
 """This module contains methods to make POST and GET requests."""
+import importlib
 import logging
 import os
 import socket
@@ -33,23 +34,25 @@ import certifi
 
 try:
     import telegram.vendor.ptb_urllib3.urllib3 as urllib3
-    import telegram.vendor.ptb_urllib3.urllib3.contrib.appengine as appengine
-    from telegram.vendor.ptb_urllib3.urllib3.connection import HTTPConnection
-    from telegram.vendor.ptb_urllib3.urllib3.util.timeout import Timeout
-    from telegram.vendor.ptb_urllib3.urllib3.fields import RequestField
+    __base_urllib3 = 'telegram.vendor.ptb_urllib3.urllib3'
 except ImportError:  # pragma: no cover
-    warnings.warn("python-telegram-bot wasn't properly installed. Please refer to README.rst on "
-                  "how to properly install.")
-    raise
+    import urllib3
+
+    __base_urllib3 = 'urllib3'
+    warnings.warn(
+        "Operating with non vendored urllib3. This mode is allowed but not officially supported")
 
 from telegram import (InputFile, TelegramError, InputMedia)
 from telegram.error import (Unauthorized, NetworkError, TimedOut, BadRequest, ChatMigrated,
                             RetryAfter, InvalidToken, Conflict)
 
+appengine = importlib.import_module('{}.contrib.appengine'.format(__base_urllib3),
+                                    'urllib3.contrib.appengine')
+
 
 def _render_part(self, name, value):
-    """
-    Monkey patch urllib3.urllib3.fields.RequestField to make it *not* support RFC2231 compliant
+    r"""
+    Monkey patch urllib3.fields.RequestField to make it *not* support RFC2231 compliant
     Content-Disposition headers since telegram servers don't understand it. Instead just escape
     \ and " and replace any \n and \r with a space.
     """
@@ -58,7 +61,7 @@ def _render_part(self, name, value):
     return u'%s="%s"' % (name, value)
 
 
-RequestField._render_part = _render_part
+urllib3.fields.RequestField._render_part = _render_part
 
 logging.getLogger('urllib3').setLevel(logging.WARNING)
 
@@ -96,7 +99,7 @@ class Request(object):
 
         self._connect_timeout = connect_timeout
 
-        sockopts = HTTPConnection.default_socket_options + [
+        sockopts = urllib3.connection.HTTPConnection.default_socket_options + [
             (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
 
         # TODO: Support other platforms like mac and windows.
@@ -137,7 +140,7 @@ class Request(object):
             kwargs.update(urllib3_proxy_kwargs)
             if proxy_url.startswith('socks'):
                 try:
-                    from telegram.vendor.ptb_urllib3.urllib3.contrib.socks import SOCKSProxyManager
+                    from telegram.vendor.ptb_urllib3.urllib3_contrib.socks import SOCKSProxyManager
                 except ImportError:
                     raise RuntimeError('PySocks is missing')
                 mgr = SOCKSProxyManager(proxy_url, **kwargs)
@@ -265,7 +268,8 @@ class Request(object):
         urlopen_kwargs = {}
 
         if timeout is not None:
-            urlopen_kwargs['timeout'] = Timeout(read=timeout, connect=self._connect_timeout)
+            urlopen_kwargs['timeout'] = urllib3.util.timeout.Timeout(
+                read=timeout, connect=self._connect_timeout)
 
         result = self._request_wrapper('GET', url, **urlopen_kwargs)
         return self._parse(result)
@@ -287,7 +291,8 @@ class Request(object):
         urlopen_kwargs = {}
 
         if timeout is not None:
-            urlopen_kwargs['timeout'] = Timeout(read=timeout, connect=self._connect_timeout)
+            urlopen_kwargs['timeout'] = urllib3.util.timeout.Timeout(
+                read=timeout, connect=self._connect_timeout)
 
         # Are we uploading files?
         files = False
@@ -340,7 +345,8 @@ class Request(object):
         """
         urlopen_kwargs = {}
         if timeout is not None:
-            urlopen_kwargs['timeout'] = Timeout(read=timeout, connect=self._connect_timeout)
+            urlopen_kwargs['timeout'] = urllib3.util.timeout.Timeout(
+                read=timeout, connect=self._connect_timeout)
 
         return self._request_wrapper('GET', url, **urlopen_kwargs)
 
